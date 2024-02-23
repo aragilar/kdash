@@ -9,7 +9,8 @@ mod network;
 mod ui;
 
 use std::{
-  io::{self, stdout, Stdout},
+    fs::File,
+  io::{self, stdout, Stdout, Write},
   panic::{self, PanicInfo},
   sync::Arc,
 };
@@ -72,6 +73,8 @@ async fn main() -> Result<()> {
   let (sync_io_tx, sync_io_rx) = mpsc::channel::<IoEvent>(500);
   let (sync_io_stream_tx, sync_io_stream_rx) = mpsc::channel::<IoStreamEvent>(500);
   let (sync_io_cmd_tx, sync_io_cmd_rx) = mpsc::channel::<IoCmdEvent>(500);
+  let error_file = File::options().
+      create(true).append(true).open("/tmp/kdash.log").unwrap();
 
   // Initialize app state
   let app = Arc::new(Mutex::new(App::new(
@@ -80,6 +83,7 @@ async fn main() -> Result<()> {
     sync_io_cmd_tx,
     cli.enhanced_graphics,
     cli.poll_rate / cli.tick_rate,
+    error_file
   )));
 
   // make copies for the network/cli threads

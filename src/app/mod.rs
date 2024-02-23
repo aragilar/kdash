@@ -25,6 +25,9 @@ pub(crate) mod storageclass;
 pub(crate) mod svcs;
 mod utils;
 
+use std::fs::File;
+use std::io::Write;
+
 use anyhow::anyhow;
 use kube::config::Kubeconfig;
 use kubectl_view_allocations::{GroupBy, QtyByQualifier};
@@ -204,6 +207,7 @@ pub struct App {
   pub utilization_group_by: Vec<GroupBy>,
   pub help_docs: StatefulTable<Vec<String>>,
   pub data: Data,
+  pub error_file: Option<File>,
 }
 
 impl Default for Data {
@@ -419,6 +423,7 @@ impl Default for App {
       ],
       help_docs: StatefulTable::with_items(key_binding::get_help_docs()),
       data: Data::default(),
+      error_file: None,
     }
   }
 }
@@ -430,6 +435,7 @@ impl App {
     io_cmd_tx: Sender<IoCmdEvent>,
     enhanced_graphics: bool,
     tick_until_poll: u64,
+    error_file: File,
   ) -> Self {
     App {
       io_tx: Some(io_tx),
@@ -437,6 +443,7 @@ impl App {
       io_cmd_tx: Some(io_cmd_tx),
       enhanced_graphics,
       tick_until_poll,
+      error_file: Some(error_file),
       ..App::default()
     }
   }
@@ -496,6 +503,16 @@ impl App {
   }
 
   pub fn handle_error(&mut self, e: anyhow::Error) {
+    if self.error_file.is_none() {
+        self.error_file = File::options().append(true).open("/tmp/kdash.log").ok();
+    }
+    match &mut self.error_file {
+        Some(f) => {
+            writeln!(f, "{:?}", e).ok();
+            ()
+        },
+        None => ()
+    };
     self.api_error = e.to_string();
   }
 
